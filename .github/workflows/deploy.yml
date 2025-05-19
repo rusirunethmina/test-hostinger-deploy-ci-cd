@@ -38,11 +38,20 @@ jobs:
 
       - name: Prepare deployment files
         run: |
-          # Create deployment directory with all files
+          # Create deployment directory
           mkdir -p deployment
-          cp -r * .env .htaccess deployment/ || true
 
-          # Fix index.php paths if needed (modify this if your structure is different)
+          # Create .htaccess file in root
+          echo '<IfModule mod_rewrite.c>
+              RewriteEngine On
+              RewriteCond %{REQUEST_URI} !^/public/
+              RewriteRule ^(.*)$ /public/$1 [L,QSA]
+          </IfModule>' > deployment/.htaccess
+
+          # Copy all files
+          cp -r * .env deployment/ || true
+
+          # Fix index.php paths if needed
           if [ -f deployment/public/index.php ]; then
             sed -i "s|require __DIR__.'/../vendor/autoload.php'|require __DIR__.'/../vendor/autoload.php'|g" deployment/public/index.php
             sed -i "s|\$app = require_once __DIR__.'/../bootstrap/app.php'|\$app = require_once __DIR__.'/../bootstrap/app.php'|g" deployment/public/index.php
