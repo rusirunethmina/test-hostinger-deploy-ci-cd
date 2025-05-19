@@ -85,6 +85,7 @@ jobs:
             rm laravel-deployment.zip && \
             chmod -R 755 . && \
             chmod -R 777 storage bootstrap/cache && \
+            php artisan migrate && \
             php artisan config:cache && \
             php artisan route:cache && \
             php artisan view:cache"
