@@ -2,7 +2,7 @@ name: Deploy Laravel to Hostinger
 
 on:
   push:
-    branches: [master] # Change this to your main branch name
+    branches: [master]
 
 jobs:
   deploy:
@@ -14,7 +14,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2" # Change this to match your Laravel version requirements
+          php-version: "8.2"
           extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath, zip
           coverage: none
 
@@ -32,6 +32,10 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Ensure remote directory exists
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.REMOTE_DIR }}"
 
       - name: Deploy to Hostinger
         run: |
