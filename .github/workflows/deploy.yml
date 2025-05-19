@@ -2,7 +2,7 @@ name: Deploy Laravel to Hostinger
 
 on:
   push:
-    branches: [master] # Change this to your main branch name
+    branches: [master]
 
 jobs:
   build-and-deploy:
@@ -11,54 +11,61 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Validate required secrets
+        run: |
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "SSH_PRIVATE_KEY secret is missing"; exit 1; fi
+          if [ -z "${{ secrets.SSH_HOST }}" ]; then echo "SSH_HOST secret is missing"; exit 1; fi
+          if [ -z "${{ secrets.SSH_USERNAME }}" ]; then echo "SSH_USERNAME secret is missing"; exit 1; fi
+          if [ -z "${{ secrets.SSH_PORT }}" ]; then echo "SSH_PORT secret is missing"; exit 1; fi
+          if [ -z "${{ secrets.REMOTE_DIR }}" ]; then echo "REMOTE_DIR secret is missing"; exit 1; fi
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2" # Change this to match your Laravel version requirements
+          php-version: "8.2"
           extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath, zip
           coverage: none
 
       - name: Install Composer dependencies
         run: composer install --no-dev --optimize-autoloader --no-interaction
 
-      - name: Create .env file
+      - name: Setup environment
         run: |
           cp .env.example .env
           php artisan key:generate
-
-      - name: Update environment for production
-        run: |
           sed -i 's/APP_ENV=local/APP_ENV=production/g' .env
           sed -i 's/APP_DEBUG=true/APP_DEBUG=false/g' .env
 
-      - name: Create special .htaccess file for root
+      - name: Prepare deployment structure
         run: |
+          # Create .htaccess for root
           echo '<IfModule mod_rewrite.c>
               RewriteEngine On
               RewriteRule ^(.*)$ public/$1 [L]
           </IfModule>' > .htaccess
 
-      - name: Create deployment structure for public directory
-        run: |
+          # Prepare public directory
           mkdir -p deployment/public
           cp -r public/* public/.htaccess deployment/public/
-          cp index.php deployment/public/
-          # Fix paths in index.php to point to the correct directories
-          sed -i "s|require __DIR__.'/../vendor/autoload.php'|require __DIR__.'/../laravel/vendor/autoload.php'|g" deployment/public/index.php
-          sed -i "s|$app = require_once __DIR__.'/../bootstrap/app.php'|$app = require_once __DIR__.'/../laravel/bootstrap/app.php'|g" deployment/public/index.php
 
-      - name: Create laravel directory structure
-        run: |
+          # Copy and modify index.php
+          if [ ! -f public/index.php ]; then
+            echo "Error: public/index.php not found!"
+            exit 1
+          fi
+          cp public/index.php deployment/public/
+          sed -i "s|require __DIR__.'/../vendor/autoload.php'|require __DIR__.'/../laravel/vendor/autoload.php'|g" deployment/public/index.php
+          sed -i "s|\$app = require_once __DIR__.'/../bootstrap/app.php'|\$app = require_once __DIR__.'/../laravel/bootstrap/app.php'|g" deployment/public/index.php
+
+          # Prepare Laravel core files
           mkdir -p deployment/laravel
-          # Copy all Laravel files except public directory to the laravel folder
           cp -r app bootstrap config database resources routes storage vendor composer.json composer.lock artisan .env deployment/laravel/
 
-      - name: Set permissions for storage and bootstrap/cache
-        run: |
+          # Set permissions
           chmod -R 777 deployment/laravel/storage
           chmod -R 777 deployment/laravel/bootstrap/cache
 
-      - name: Create ZIP archive of deployment
+      - name: Create deployment package
         run: |
           cd deployment
           zip -r ../laravel-deployment.zip .
@@ -70,25 +77,28 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Ensure remote directory exists
+      - name: Deploy to Hostinger
         run: |
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.REMOTE_DIR }}"
-
-      - name: Upload ZIP to server
-        run: |
+          # Upload package
           scp -i ~/.ssh/deploy_key -P ${{ secrets.SSH_PORT }} laravel-deployment.zip ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.REMOTE_DIR }}/
 
-      - name: Extract and set up on server
-        run: |
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }} && \
-          unzip -o laravel-deployment.zip && \
-          rm laravel-deployment.zip && \
-          chmod -R 755 . && \
-          chmod -R 777 laravel/storage laravel/bootstrap/cache"
+          # Extract and setup on server
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "\
+            cd ${{ secrets.REMOTE_DIR }} && \
+            unzip -o laravel-deployment.zip && \
+            rm laravel-deployment.zip && \
+            chmod -R 755 . && \
+            chmod -R 777 laravel/storage laravel/bootstrap/cache && \
+            cd laravel && \
+            php artisan config:cache && \
+            php artisan route:cache && \
+            php artisan view:cache"
 
-      - name: Run Laravel post-deployment commands
+          # Cleanup local files
+          rm laravel-deployment.zip
+
+      - name: Verify deployment (optional)
         run: |
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }}/laravel && \
-          php artisan config:cache && \
-          php artisan route:cache && \
-          php artisan view:cache"
+          # Add a curl command to verify the deployment if you have a public URL
+          # curl -I https://yourdomain.com
+          echo "Deployment completed successfully"
