@@ -50,4 +50,4 @@ jobs:
 
       - name: Post-deployment setup
         run: |
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }} && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache"
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }}  && php artisan config:cache && php artisan route:cache && php artisan view:cache"
