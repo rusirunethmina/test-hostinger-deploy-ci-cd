@@ -9,6 +9,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set execute permission for install script
+        run: chmod +x scripts/install.sh
+
       - name: Validate required secrets
         run: ./scripts/install.sh validate_secrets
         env:
