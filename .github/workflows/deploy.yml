@@ -69,10 +69,11 @@ jobs:
             sed -i 's/APP_DEBUG=true/APP_DEBUG=false/g' .env
           fi"
 
+      # IMPORTANT: Uncommented this step to move public files to web root
+      - name: Move public files to web root
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }} && cp -r public/* . && cp public/.htaccess . && sed -i 's/\/..\/vendor/\/vendor/g' index.php"
+
       - name: Post-deployment setup
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }} && php artisan config:cache && php artisan route:cache && php artisan view:cache"
-      # Alternative solution: You can uncomment this if you want to move public files to web root
-      # - name: Move public files to web root (alternative solution)
-      #  run: |
-      #    ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }} && cp -r public/* . && cp public/.htaccess . && sed -i 's/\/..\/vendor/\/vendor/g' index.php"
