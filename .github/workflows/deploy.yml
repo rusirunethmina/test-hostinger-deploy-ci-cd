@@ -5,10 +5,8 @@ on:
     branches: [master]
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    outputs:
-      artifact_name: ${{ steps.package.outputs.artifact_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -64,28 +62,9 @@ jobs:
           chmod -R 777 deployment/bootstrap/cache
 
       - name: Create deployment package
-        id: package
         run: |
           cd deployment
-          zip_name="laravel-deployment-$(date +%Y%m%d%H%M%S).zip"
-          zip -r ../${zip_name} .
-          echo "artifact_name=${zip_name}" >> $GITHUB_OUTPUT
-          echo "Created package: ${zip_name}"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: laravel-package
-          path: ${{ steps.package.outputs.artifact_name }}
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: laravel-package
+          zip -r ../laravel-deployment.zip .
 
       - name: Configure SSH
         run: |
@@ -96,17 +75,14 @@ jobs:
 
       - name: Deploy to Hostinger
         run: |
-          # Find the zip file (since we don't know the exact name)
-          zip_file=$(ls laravel-deployment-*.zip)
-
           # Upload package
-          scp -i ~/.ssh/deploy_key -P ${{ secrets.SSH_PORT }} ${zip_file} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.REMOTE_DIR }}/
+          scp -i ~/.ssh/deploy_key -P ${{ secrets.SSH_PORT }} laravel-deployment.zip ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.REMOTE_DIR }}/
 
           # Extract and setup on server
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "\
             cd ${{ secrets.REMOTE_DIR }} && \
-            unzip -o ${zip_file} && \
-            rm ${zip_file} && \
+            unzip -o laravel-deployment.zip && \
+            rm laravel-deployment.zip && \
             chmod -R 755 . && \
             chmod -R 777 storage bootstrap/cache && \
             php artisan config:cache && \
@@ -114,7 +90,7 @@ jobs:
             php artisan view:cache"
 
           # Cleanup local files
-          rm ${zip_file}
+          rm laravel-deployment.zip
 
       - name: Verify deployment
         run: |
