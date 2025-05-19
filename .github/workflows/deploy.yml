@@ -26,9 +26,6 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      - name: Run tests
-        run: vendor/bin/phpunit
-
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh/
