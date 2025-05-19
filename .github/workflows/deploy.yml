@@ -91,6 +91,7 @@ jobs:
 
           # Cleanup local files
           rm laravel-deployment.zip
+          rm deployment
 
       - name: Verify deployment
         run: |
