@@ -36,34 +36,21 @@ jobs:
           sed -i 's/APP_ENV=local/APP_ENV=production/g' .env
           sed -i 's/APP_DEBUG=true/APP_DEBUG=false/g' .env
 
-      - name: Prepare deployment structure
+      - name: Prepare deployment files
         run: |
-          # Create .htaccess for root
-          echo '<IfModule mod_rewrite.c>
-              RewriteEngine On
-              RewriteRule ^(.*)$ public/$1 [L]
-          </IfModule>' > .htaccess
+          # Create deployment directory with all files
+          mkdir -p deployment
+          cp -r * .env .htaccess deployment/ || true
 
-          # Prepare public directory
-          mkdir -p deployment/public
-          cp -r public/* public/.htaccess deployment/public/
-
-          # Copy and modify index.php
-          if [ ! -f public/index.php ]; then
-            echo "Error: public/index.php not found!"
-            exit 1
+          # Fix index.php paths if needed (modify this if your structure is different)
+          if [ -f deployment/public/index.php ]; then
+            sed -i "s|require __DIR__.'/../vendor/autoload.php'|require __DIR__.'/../vendor/autoload.php'|g" deployment/public/index.php
+            sed -i "s|\$app = require_once __DIR__.'/../bootstrap/app.php'|\$app = require_once __DIR__.'/../bootstrap/app.php'|g" deployment/public/index.php
           fi
-          cp public/index.php deployment/public/
-          sed -i "s|require __DIR__.'/../vendor/autoload.php'|require __DIR__.'/../laravel/vendor/autoload.php'|g" deployment/public/index.php
-          sed -i "s|\$app = require_once __DIR__.'/../bootstrap/app.php'|\$app = require_once __DIR__.'/../laravel/bootstrap/app.php'|g" deployment/public/index.php
-
-          # Prepare Laravel core files
-          mkdir -p deployment/laravel
-          cp -r app bootstrap config database resources routes storage vendor composer.json composer.lock artisan .env deployment/laravel/
 
           # Set permissions
-          chmod -R 777 deployment/laravel/storage
-          chmod -R 777 deployment/laravel/bootstrap/cache
+          chmod -R 777 deployment/storage
+          chmod -R 777 deployment/bootstrap/cache
 
       - name: Create deployment package
         run: |
@@ -88,8 +75,7 @@ jobs:
             unzip -o laravel-deployment.zip && \
             rm laravel-deployment.zip && \
             chmod -R 755 . && \
-            chmod -R 777 laravel/storage laravel/bootstrap/cache && \
-            cd laravel && \
+            chmod -R 777 storage bootstrap/cache && \
             php artisan config:cache && \
             php artisan route:cache && \
             php artisan view:cache"
@@ -97,8 +83,8 @@ jobs:
           # Cleanup local files
           rm laravel-deployment.zip
 
-      - name: Verify deployment (optional)
+      - name: Verify deployment
         run: |
           # Add a curl command to verify the deployment if you have a public URL
-          # curl -I https://yourdomain.com
+          # curl -I https://test.codelus.io
           echo "Deployment completed successfully"
