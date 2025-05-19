@@ -84,7 +84,6 @@ jobs:
             cd ${{ secrets.REMOTE_DIR }} && \
             unzip -o laravel-deployment.zip && \
             rm laravel-deployment.zip && \
-            rm deployment && \
             chmod -R 755 . && \
             chmod -R 777 storage bootstrap/cache && \
             php artisan migrate --force && \
