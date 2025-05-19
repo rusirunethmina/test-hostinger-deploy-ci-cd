@@ -2,7 +2,7 @@ name: Deploy Laravel to Hostinger
 
 on:
   push:
-    branches: [master]
+    branches: [master] # Change this to your main branch name
 
 jobs:
   deploy:
@@ -14,7 +14,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2"
+          php-version: "8.2" # Change this to match your Laravel version requirements
           extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath, zip
           coverage: none
 
@@ -33,6 +33,13 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Create root .htaccess file
+        run: |
+          echo '<IfModule mod_rewrite.c>
+              RewriteEngine On
+              RewriteRule ^(.*)$ public/$1 [L]
+          </IfModule>' > .htaccess
+
       - name: Ensure remote directory exists
         run: |
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "mkdir -p ${{ secrets.REMOTE_DIR }}"
@@ -48,6 +55,24 @@ jobs:
             --exclude="tests/" \
             ./ ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:${{ secrets.REMOTE_DIR }}
 
+      - name: Set proper file permissions
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }} && chmod -R 755 . && chmod -R 777 storage bootstrap/cache"
+
+      - name: Configure environment
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }} &&
+          if [ ! -f .env ]; then
+            cp .env.example .env
+            php artisan key:generate
+            sed -i 's/APP_ENV=local/APP_ENV=production/g' .env
+            sed -i 's/APP_DEBUG=true/APP_DEBUG=false/g' .env
+          fi"
+
       - name: Post-deployment setup
         run: |
-          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }}  && php artisan config:cache && php artisan route:cache && php artisan view:cache"
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }} && php artisan migrate --force && php artisan config:cache && php artisan route:cache && php artisan view:cache"
+      # Alternative solution: You can uncomment this if you want to move public files to web root
+      # - name: Move public files to web root (alternative solution)
+      #  run: |
+      #    ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.REMOTE_DIR }} && cp -r public/* . && cp public/.htaccess . && sed -i 's/\/..\/vendor/\/vendor/g' index.php"
