@@ -1,66 +1,193 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Automated Deployment to Hostinger
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-2088FF?logo=github-actions&logoColor=white)
+![Laravel](https://img.shields.io/badge/Laravel-FF2D20?logo=laravel&logoColor=white)
+![Hostinger](https://img.shields.io/badge/Hostinger-3066BE?logo=hostinger&logoColor=white)
 
-## About Laravel
+Automated CI/CD pipeline for deploying Laravel applications to Hostinger using GitHub Actions.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Table of Contents
+- [🚀 Features](#-features)
+- [📋 Prerequisites](#-prerequisites)
+- [⚙️ Setup Guide](#️-setup-guide)
+  - [🔑 SSH Key Setup](#-ssh-key-setup)
+  - [🔐 GitHub Secrets Configuration](#-github-secrets-configuration)
+- [🔄 Deployment Workflow](#-deployment-workflow)
+- [👨‍💻 Manual Deployment](#-manual-deployment)
+- [🐛 Troubleshooting](#-troubleshooting)
+- [🔧 Maintenance](#-maintenance)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 🚀 Features
+- **Automatic deployments** on push to `master` branch
+- **Secure SSH transfers** with encrypted connections
+- **Optimized production builds** with cached routes and views
+- **Zero-downtime deployment** strategy
+- **Complete environment setup** including proper permissions
+- **Two-phase deployment** (build + deploy) with artifact storage
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 📋 Prerequisites
+Before starting, ensure you have:
+- Hostinger hosting account with **SSH access enabled**
+- GitHub repository for your Laravel project
+- Laravel 9.x or 10.x application
+- PHP 8.2 configured on Hostinger
+- Composer 2.x installed
 
-## Learning Laravel
+## ⚙️ Setup Guide
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 🔑 SSH Key Setup
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+#### 1. Generate SSH Key Pair
+Run on your local machine:
+```bash
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+Press Enter to accept default location (~/.ssh/id_rsa)
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Enter a secure passphrase (recommended)
 
-## Laravel Sponsors
+2. Configure Hostinger
+Log in to Hostinger control panel
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+Navigate to Advanced → SSH Access
 
-### Premium Partners
+Click Manage SSH Keys
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+Add new key with contents of ~/.ssh/id_rsa.pub
 
-## Contributing
+3. Test Connection
+bash
+ssh -p 22 your_cpanel_username@yourdomain.com
+🔐 GitHub Secrets Configuration
+Navigate to:
+Repository Settings → Secrets → Actions → New Repository Secret
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Add these required secrets:
 
-## Code of Conduct
+Secret Name	Example Value	Description
+SSH_PRIVATE_KEY	Contents of id_rsa	Private SSH key
+SSH_HOST	yourdomain.com	Your domain
+SSH_USERNAME	u12345678	Hostinger username
+SSH_PORT	22	SSH port
+REMOTE_DIR	/home/u12345678/domains/example.com/public_html	Deployment path
+🔄 Deployment Workflow
+The system uses GitHub Actions with this flow:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Diagram
+Code
+graph TD
+    A[Code Push] --> B{Is master branch?}
+    B -->|Yes| C[Start Workflow]
+    C --> D[Build Phase]
+    D --> E[Deploy Phase]
+    E --> F[Verify]
+    B -->|No| G[Do nothing]
+Build Phase Includes:
 
-## Security Vulnerabilities
+PHP 8.2 environment setup
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Composer dependency installation
 
-## License
+Environment configuration
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Production optimizations
+
+Artifact creation
+
+Deploy Phase Includes:
+
+Secure file transfer via SCP
+
+Automatic extraction on server
+
+Permission configuration
+
+Laravel optimization commands:
+
+bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+👨‍💻 Manual Deployment
+If automated deployment fails:
+
+Prepare Build Locally
+
+bash
+composer install --no-dev --optimize-autoloader
+cp .env.example .env
+php artisan key:generate
+Upload Files
+
+bash
+scp -P 22 -r * user@hostinger.com:public_html/
+Server-Side Setup
+
+bash
+chmod -R 775 storage bootstrap/cache
+php artisan storage:link
+🐛 Troubleshooting
+Common Issues
+Error	Solution
+Permission denied	Verify SSH key and server permissions
+Missing .env	Ensure file exists with correct values
+White screen	Check storage permissions and error logs
+Deployment fails	Examine GitHub Actions logs
+Debugging SSH
+bash
+ssh -vvv -p 22 user@hostinger.com
+Checking Logs
+bash
+# On server
+tail -f storage/logs/laravel.log
+🔧 Maintenance
+Updating Deployment
+Edit .github/workflows/deploy.yml
+
+Commit changes to master
+
+Monitor Actions tab for results
+
+Key Rotation
+Generate new keys:
+
+bash
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/new_deploy_key
+Update both Hostinger and GitHub secrets
+
+Monitoring
+GitHub Actions: View workflow runs
+
+Hostinger: Check File Manager and logs
+
+Laravel: Monitor storage/logs
+
+Security Note: Never commit sensitive files (.env, .htaccess) to your repository. The deployment workflow handles these automatically.
+
+Deploy to Hostinger
+
+
+This README includes:
+
+1. **Visual Enhancements**:
+   - Colorful badges and emojis for better scanning
+   - Mermaid diagram for workflow visualization
+   - Clean tables for organized information
+
+2. **Complete Documentation**:
+   - End-to-end setup instructions
+   - Both automated and manual deployment methods
+   - Comprehensive troubleshooting guide
+   - Maintenance best practices
+
+3. **Technical Details**:
+   - Exact commands for each step
+   - Configuration requirements
+   - Security considerations
+
+4. **User-Friendly Features**:
+   - Clear section headers
+   - Consistent formatting
+   - Actionable items
+   - Visual cues
+
+The document is ready to use - just copy this into your project's `README.md` file and it will provide complete deployment documentation for your team.
