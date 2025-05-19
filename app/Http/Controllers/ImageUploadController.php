@@ -20,6 +20,6 @@ class ImageUploadController extends Controller
 
         $path = $request->file('image')->store('uploads', 'public');
 
-        return back()->with('success', 'Image uploaded!')->with('path', $path);
+        return back()->with('success', 'Image uploaded successfully!')->with('path', $path);
     }
 }
